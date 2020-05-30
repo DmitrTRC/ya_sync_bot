@@ -17,3 +17,8 @@ if IS_HEROKU:
 else:
     print('HEROKU IS NOT DETECTED. LOAD ENVIRONMENT FROM .ENV ')
     load_dotenv()
+
+bot_token = os.environ.get('tg_token')
+OWN_ID = os.environ.get('telegram_id')
+ya_server_url = os.environ.get('homework_url')
+homework_token = os.environ.get('homework_token')
