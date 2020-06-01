@@ -41,14 +41,17 @@ BOT_STATUS = {
 
 def get_formatted_data(server_list):
     task_str = ''
-    for v in server_list:
-        task_str += (v.get('homework_name') + '  ' + v.get('date_updated') + '  ' + v.get('status') + '\n')
+    if isinstance(server_list, dict):
+        task_str += (
+                server_list.get('homework_name') + '  ' + server_list.get('date_updated') + '  '
+                + server_list.get('status'))
+    else:
+        for v in server_list:
+            task_str += (v.get('homework_name') + '  ' + v.get('date_updated') + '  ' + v.get('status') + '\n')
     return task_str
 
 
 async def get_homework_statuses(current_timestamp):
-    logging.info('Inside get_home_statuses() ...')
-
     headers = {
         'Authorization': f'OAuth {PRACTICUM_TOKEN}',
     }
@@ -78,7 +81,6 @@ async def process_active_list(message: types.Message):
     except KeyError as er:
         print(f'Key not found! Error : {er}')
 
-    logging.info(f'Task list : {task_list}')
     answer = get_formatted_data(task_list) if task_list else 'All homeworks are approved!'
     await bot.send_message(chat_id=OWN_ID, text=answer)
 
@@ -92,10 +94,8 @@ async def process_list_command(message: types.Message):
 @dp.message_handler(commands=['last'])
 async def process_last_command(message: types.Message):
     task_list = await get_homework_statuses(0)
-    last_job = await (task_list.get('homeworks')[0])
-    await bot.send_message(
-        chat_id=OWN_ID,
-        text=last_job.get.get('homework_name') + '  ' + last_job.get('date_updated') + '  ' + last_job.get('status'))
+    last_job = task_list.get('homeworks')[0]
+    await bot.send_message(chat_id=OWN_ID, text=get_formatted_data(last_job))
 
 
 @dp.message_handler(commands=['track'])
