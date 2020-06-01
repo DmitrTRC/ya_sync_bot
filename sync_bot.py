@@ -67,6 +67,22 @@ async def process_start_command(message: types.Message):
                         '/help - for command list. ')
 
 
+@dp.message_handler(commands=['active'])
+async def process_active_list(message: types.Message):
+    task_list = []
+    server_list = await get_homework_statuses(0)
+    try:
+        for task in server_list['homeworks']:
+            if task.get('status') != 'approved':
+                task_list.append(task)
+    except KeyError as er:
+        print(f'Key not found! Error : {er}')
+
+    logging.info(f'Task list : {task_list}')
+    answer = get_formatted_data(task_list) if task_list else 'All homeworks are approved!'
+    await bot.send_message(chat_id=OWN_ID, text=answer)
+
+
 @dp.message_handler(commands=['list'])
 async def process_list_command(message: types.Message):
     task_list = await get_homework_statuses(0)
@@ -74,7 +90,7 @@ async def process_list_command(message: types.Message):
 
 
 @dp.message_handler(commands=['last'])
-async def process_list_command(message: types.Message):
+async def process_last_command(message: types.Message):
     task_list = await get_homework_statuses(0)
     await bot.send_message(chat_id=OWN_ID, text=get_formatted_data(task_list.get('homeworks')[0]))
 
@@ -99,7 +115,6 @@ async def process_help_command(message: types.Message):
 
 
 async def parse_homework_status(homework) -> str:
-    logging.info('Parsing answer ...')
     homework_name = await homework.get('homework_name')
     if homework.get('status') != 'approved':
         verdict = 'К сожалению в работе нашлись ошибки.'
@@ -109,11 +124,9 @@ async def parse_homework_status(homework) -> str:
 
 
 async def get_current_status() -> None:
-    logging.info('Inside egt_current_status... ')
     current_timestamp = int(time.time())  # начальное значение timestamp
 
     while True:
-        logging.info('Get status main loop check.')
         if not BOT_STATUS['active']:
             print(f'Bot idle for {str(timedelta(seconds=time.time() - BOT_STATUS["time_stop"]))}')
             await asyncio.sleep(60)
@@ -161,19 +174,9 @@ async def all_msg_handler(message: types.Message):
 
 
 async def main():
-    logging.info('Starting main ...')
-    logging.info('Starting get_current_status()...')
     await get_current_status()
-    logging.info('Returned from the get_current_status()')
 
 
 if __name__ == '__main__':
-    logging.info('Creating ASYNCIO MAIN TASK')
     dp.loop.create_task(main())
-    logging.info('Main Task created')
-    logging.info('Start polling ...')
     executor.start_polling(dp)
-# Color print , Separate executor , Shutdown in too polling !
-# How to protect home net and server
-# Server Hp
-# Async Semaphores
