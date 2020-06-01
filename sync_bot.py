@@ -92,10 +92,10 @@ async def process_list_command(message: types.Message):
 @dp.message_handler(commands=['last'])
 async def process_last_command(message: types.Message):
     task_list = await get_homework_statuses(0)
-    last_job = list(task_list.get('homeworks')[0])
-    logging.info(f'{last_job=}')
-    await asyncio.sleep(2)
-    # await bot.send_message(chat_id=OWN_ID, text=get_formatted_data(last_job))
+    last_job = await task_list.get('homeworks')[0]
+    await bot.send_message(
+        chat_id=OWN_ID,
+        text=last_job.get.get('homework_name') + '  ' + last_job.get('date_updated') + '  ' + last_job.get('status'))
 
 
 @dp.message_handler(commands=['track'])
