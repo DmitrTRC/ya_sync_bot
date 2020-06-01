@@ -3,9 +3,13 @@ import requests as rq
 import logging
 import sentry_sdk
 import time
+import asyncio
+import aiohttp
+
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
+from datetime import timedelta
 from dotenv import load_dotenv
 
 sentry_sdk.init("https://112f0bcd65ad40ad938a287a0d4ff8b9@o335977.ingest.sentry.io/5250334")
@@ -22,17 +26,62 @@ else:
 
 bot_token = os.environ.get('tg_token')
 OWN_ID = os.environ.get('telegram_id')
-ya_server_url = os.environ.get('homework_url')
-homework_token = os.environ.get('homework_token')
+YA_SERVER_URL = os.environ.get('homework_url')
+PRACTICUM_TOKEN = os.environ.get('homework_token')
 
 bot = Bot(bot_token)
 dp = Dispatcher(bot)
+
+BOT_STATUS = {
+    'active': True,
+    'time_start': time.time(),
+    'time_stop': None,
+}
 
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     await message.reply('Welcome to YANDEX Homework Status Information System!\n'
                         '/help - for command list. ')
+
+
+@dp.message_handler(commands=['track'])
+async def process_track_command(message: types.Message):
+    keyboard_markup = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
+    buttons_text = ('Active', 'Idle')
+    keyboard_markup.row(*(types.KeyboardButton(text) for text in buttons_text))
+    await message.reply('Do you want to set another status for server tracking?', reply_markup=keyboard_markup)
+
+
+@dp.message_handler()
+async def all_msg_handler(message: types.Message):
+    button_text = message.text
+
+    if button_text == 'Active':
+        try:
+            BOT_STATUS['active'] = True
+        except KeyError as er:
+            print(f'Key Error ! {er}')
+        reply_text = 'Bot status: Active.'
+        BOT_STATUS['time_start'] = time.time()
+        print(f'Tracking SET ON')
+    elif button_text == 'Idle':
+        try:
+            BOT_STATUS['active'] = False
+        except KeyError as er:
+            print(f'Key Error ! {er}')
+        reply_text = 'Bot status: Waiting.'
+        BOT_STATUS['time_stop'] = time.time()
+        print(f'Tracking SET OFF')
+    else:
+        reply_text = 'Keep previous state.'
+
+    await message.reply(reply_text, reply_markup=types.ReplyKeyboardRemove())
+
+
+async def greeting_msg():
+    await bot.send_message(chat_id=OWN_ID, text=f'Yandex Status bot is started.\n '
+                                                'Status: ACTIVE')
 
 
 @dp.message_handler(commands=['help'])
@@ -43,9 +92,73 @@ async def process_help_command(message: types.Message):
                         '/list - get all tasks\n'
                         '/active - show only uncompleted '
                         'home_works.\n'
-                        '/track_on - set track on \n'
-                        '/track_off - set track off \n')
+                        '/track - set track on/off \n')
+
+
+async def parse_homework_status(homework) -> str:
+    logging.info('Parsing answer ...')
+    homework_name = await homework.get('homework_name')
+    if homework.get('status') != 'approved':
+        verdict = 'К сожалению в работе нашлись ошибки.'
+    else:
+        verdict = 'Ревьюеру всё понравилось, можно приступать к следующему уроку.'
+    return f'У вас проверили работу "{homework_name}"!\n\n{verdict}'
+
+
+async def get_homework_statuses(current_timestamp):
+    logging.info('Inside get_home_statuses() ...')
+
+    headers = {
+        'Authorization': f'OAuth {PRACTICUM_TOKEN}',
+    }
+    params = {
+        'from_date': current_timestamp
+    }
+    async with aiohttp.request('GET', YA_SERVER_URL, params=params, headers=headers) as response:
+        assert response == 200
+        return await response.json()
+
+
+async def get_current_status() -> None:
+    logging.info('Inside egt_current_status... ')
+    current_timestamp = int(time.time())  # начальное значение timestamp
+
+    while True:
+        logging.info('Get status main loop check.')
+        if not BOT_STATUS['active']:
+            print(f'Bot idle for {str(timedelta(seconds=time.time() - BOT_STATUS["time_stop"]))}')
+            await asyncio.sleep(60)
+        else:
+            try:
+                logging.info('Getting request from server ...')
+                new_homework = await get_homework_statuses(current_timestamp)
+                if new_homework.get('homeworks'):
+                    await bot.send_message(OWN_ID, parse_homework_status(new_homework.get('homeworks')[0]))
+                current_timestamp = new_homework.get('current_date')  # обновить timestamp
+                logging.info('Sleeping for 300 sec. ')
+                await asyncio.sleep(300)
+
+            except Exception as e:
+                print(f'Бот упал с ошибкой: {e}')
+                await time.sleep(5)
+                continue
+
+
+async def main():
+    logging.info('Starting main ...')
+    logging.info('Starting get_current_status()...')
+    await get_current_status()
+    logging.info('Returned from the get_current_status()')
 
 
 if __name__ == '__main__':
+    logging.info('Creating ASYNCIO MAIN TASK')
+    dp.loop.create_task(main())
+    logging.info('Main Task created')
+    logging.info('Start polling ...')
     executor.start_polling(dp)
+# Color print , Separate executor , Shutdown in too polling !
+# To know how debug works!
+# How to protect home net and server
+# Server Hp
+# Async Semaphores
