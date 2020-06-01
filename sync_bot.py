@@ -3,6 +3,7 @@ import requests as rq
 import logging
 import sentry_sdk
 import time
+import emoji
 import asyncio
 import aiohttp
 
@@ -42,12 +43,15 @@ BOT_STATUS = {
 def get_formatted_data(server_list):
     task_str = ''
     if isinstance(server_list, dict):
+
         task_str += (
                 server_list.get('homework_name') + '  ' + server_list.get('date_updated') + '  '
                 + server_list.get('status'))
     else:
         for v in server_list:
-            task_str += (v.get('homework_name') + '  ' + v.get('date_updated') + '  ' + v.get('status') + '\n')
+            status = emoji.emojize(':v: ', use_aliases=True) if v.get('status') == 'approved' else \
+                emoji.emojize(':x:', use_aliases=True)
+            task_str += (v.get('homework_name') + '  ' + v.get('date_updated') + '  ' + status + '\n')
     return task_str
 
 
@@ -66,8 +70,9 @@ async def get_homework_statuses(current_timestamp):
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
-    await message.reply('Welcome to YANDEX Homework Status Information System!\n'
-                        '/help - for command list. ')
+    await message.reply(emoji.emojize(':santa: ', use_aliases=True) + 'Welcome to YANDEX Homework '
+                                                                      'Status Information System!\n'
+                                                                      '/help - for command list. ')
 
 
 @dp.message_handler(commands=['active'])
@@ -183,4 +188,13 @@ async def main():
 
 if __name__ == '__main__':
     dp.loop.create_task(main())
-    executor.start_polling(dp)
+    executor.start_polling(dp, skip_updates=True)
+
+'''
+def timer_start():
+    threading.Timer(30.0, timer_start).start()
+    try:
+        asyncio.run_coroutine_threadsafe(save_data(),bot.loop)
+    except Exception as exc:
+        pass
+'''
