@@ -114,8 +114,9 @@ async def get_homework_statuses(current_timestamp):
     params = {
         'from_date': current_timestamp
     }
-    async with aiohttp.request('GET', YA_SERVER_URL, params=params, headers=headers) as response:
-        assert response == 200
+    async with aiohttp.ClientSession() as session:
+        response = await session.get(YA_SERVER_URL, params=params, headers=headers)
+        assert response.status == 200
         return await response.json()
 
 
@@ -133,14 +134,15 @@ async def get_current_status() -> None:
                 logging.info('Getting request from server ...')
                 new_homework = await get_homework_statuses(current_timestamp)
                 if new_homework.get('homeworks'):
-                    await bot.send_message(OWN_ID, parse_homework_status(new_homework.get('homeworks')[0]))
+                    answer = await parse_homework_status(new_homework.get('homeworks')[0])
+                    await bot.send_message(OWN_ID, answer)
                 current_timestamp = new_homework.get('current_date')  # обновить timestamp
                 logging.info('Sleeping for 300 sec. ')
                 await asyncio.sleep(300)
 
-            except Exception as e:
-                print(f'Бот упал с ошибкой: {e}')
-                await time.sleep(5)
+            except asyncio.CancelledError as e:
+                print(f'Bot has failed with : {e}')
+                await asyncio.sleep(5)
                 continue
 
 
