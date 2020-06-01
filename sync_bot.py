@@ -39,10 +39,44 @@ BOT_STATUS = {
 }
 
 
+def get_formatted_data(server_list):
+    task_str = ''
+    for v in server_list:
+        task_str += (v.get('homework_name') + '  ' + v.get('date_updated') + '  ' + v.get('status') + '\n')
+    return task_str
+
+
+async def get_homework_statuses(current_timestamp):
+    logging.info('Inside get_home_statuses() ...')
+
+    headers = {
+        'Authorization': f'OAuth {PRACTICUM_TOKEN}',
+    }
+    params = {
+        'from_date': current_timestamp
+    }
+    async with aiohttp.ClientSession() as session:
+        response = await session.get(YA_SERVER_URL, params=params, headers=headers)
+        assert response.status == 200
+        return await response.json()
+
+
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     await message.reply('Welcome to YANDEX Homework Status Information System!\n'
                         '/help - for command list. ')
+
+
+@dp.message_handler(commands=['list'])
+async def process_list_command(message: types.Message):
+    task_list = await get_homework_statuses(0)
+    await bot.send_message(chat_id=OWN_ID, text=get_formatted_data(task_list.get('homeworks')))
+
+
+@dp.message_handler(commands=['last'])
+async def process_list_command(message: types.Message):
+    task_list = await get_homework_statuses(0)
+    await bot.send_message(chat_id=OWN_ID, text=get_formatted_data(task_list.get('homeworks')[0]))
 
 
 @dp.message_handler(commands=['track'])
@@ -51,37 +85,6 @@ async def process_track_command(message: types.Message):
     buttons_text = ('Active', 'Idle')
     keyboard_markup.row(*(types.KeyboardButton(text) for text in buttons_text))
     await message.reply('Do you want to set another status for server tracking?', reply_markup=keyboard_markup)
-
-
-@dp.message_handler()
-async def all_msg_handler(message: types.Message):
-    button_text = message.text
-
-    if button_text == 'Active':
-        try:
-            BOT_STATUS['active'] = True
-        except KeyError as er:
-            print(f'Key Error ! {er}')
-        reply_text = 'Bot status: Active.'
-        BOT_STATUS['time_start'] = time.time()
-        print(f'Tracking SET ON')
-    elif button_text == 'Idle':
-        try:
-            BOT_STATUS['active'] = False
-        except KeyError as er:
-            print(f'Key Error ! {er}')
-        reply_text = 'Bot status: Waiting.'
-        BOT_STATUS['time_stop'] = time.time()
-        print(f'Tracking SET OFF')
-    else:
-        reply_text = 'Keep previous state.'
-
-    await message.reply(reply_text, reply_markup=types.ReplyKeyboardRemove())
-
-
-async def greeting_msg():
-    await bot.send_message(chat_id=OWN_ID, text=f'Yandex Status bot is started.\n '
-                                                'Status: ACTIVE')
 
 
 @dp.message_handler(commands=['help'])
@@ -103,21 +106,6 @@ async def parse_homework_status(homework) -> str:
     else:
         verdict = 'Ревьюеру всё понравилось, можно приступать к следующему уроку.'
     return f'У вас проверили работу "{homework_name}"!\n\n{verdict}'
-
-
-async def get_homework_statuses(current_timestamp):
-    logging.info('Inside get_home_statuses() ...')
-
-    headers = {
-        'Authorization': f'OAuth {PRACTICUM_TOKEN}',
-    }
-    params = {
-        'from_date': current_timestamp
-    }
-    async with aiohttp.ClientSession() as session:
-        response = await session.get(YA_SERVER_URL, params=params, headers=headers)
-        assert response.status == 200
-        return await response.json()
 
 
 async def get_current_status() -> None:
@@ -146,6 +134,32 @@ async def get_current_status() -> None:
                 continue
 
 
+@dp.message_handler()
+async def all_msg_handler(message: types.Message):
+    button_text = message.text
+
+    if button_text == 'Active':
+        try:
+            BOT_STATUS['active'] = True
+        except KeyError as er:
+            print(f'Key Error ! {er}')
+        reply_text = 'Bot status: Active.'
+        BOT_STATUS['time_start'] = time.time()
+        print(f'Tracking SET ON')
+    elif button_text == 'Idle':
+        try:
+            BOT_STATUS['active'] = False
+        except KeyError as er:
+            print(f'Key Error ! {er}')
+        reply_text = 'Bot status: Waiting.'
+        BOT_STATUS['time_stop'] = time.time()
+        print(f'Tracking SET OFF')
+    else:
+        reply_text = 'Keep previous state.'
+
+    await message.reply(reply_text, reply_markup=types.ReplyKeyboardRemove())
+
+
 async def main():
     logging.info('Starting main ...')
     logging.info('Starting get_current_status()...')
@@ -160,7 +174,6 @@ if __name__ == '__main__':
     logging.info('Start polling ...')
     executor.start_polling(dp)
 # Color print , Separate executor , Shutdown in too polling !
-# To know how debug works!
 # How to protect home net and server
 # Server Hp
 # Async Semaphores
