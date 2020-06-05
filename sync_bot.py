@@ -12,6 +12,8 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 from datetime import timedelta
 from dotenv import load_dotenv
+import redis
+import json
 
 sentry_sdk.init("https://112f0bcd65ad40ad938a287a0d4ff8b9@o335977.ingest.sentry.io/5250334")
 
@@ -24,6 +26,12 @@ if IS_HEROKU:
 else:
     print('HEROKU IS NOT DETECTED. LOAD ENVIRONMENT FROM .ENV ')
     load_dotenv()
+
+
+def save(key, value):
+    if REDIS_URL:
+        redis_db = redis.from_url(os.environ.get('REDIS_URL'))
+
 
 bot_token = os.environ.get('tg_token')
 OWN_ID = os.environ.get('telegram_id')
@@ -38,6 +46,34 @@ BOT_STATUS = {
     'time_start': time.time(),
     'time_stop': None,
 }
+
+REDIS_URL = os.environ.get('REDIS_URL')
+
+dict_db = {}
+
+
+def rb_save(key, value):
+    if REDIS_URL:
+        redis_db = redis.from_url(os.environ.get('REDIS_URL'))
+        redis_db.set(key, value)
+    else:
+        dict_db[key] = value
+
+
+def rb_load(key):
+    if REDIS_URL:
+        redis_db = redis.from_url(os.environ.get('REDIS_URL'))
+        return redis_db.get(key)
+    else:
+        return dict_db.get(key)
+
+
+bot_state = json.dumps(BOT_STATUS)
+rb_save('bot_status', bot_state)
+
+test_state = json.loads(rb_load('bot_status'))
+
+print(test_state)
 
 
 def get_formatted_data(server_list):
