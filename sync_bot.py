@@ -56,15 +56,19 @@ def rb_save(key, value):
     if REDIS_URL:
         redis_db = redis.from_url(os.environ.get('REDIS_URL'))
         redis_db.set(key, value)
+        logging.info('Stored to REDIS DB')
     else:
         dict_db[key] = value
+        logging.info('Stored to Dict DB')
 
 
 def rb_load(key):
     if REDIS_URL:
         redis_db = redis.from_url(os.environ.get('REDIS_URL'))
+        logging.info('Loaded from REDIS DB')
         return redis_db.get(key)
     else:
+        logging.info('Loaded from Dict_DB')
         return dict_db.get(key)
 
 
