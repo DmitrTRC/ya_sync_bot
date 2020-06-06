@@ -14,6 +14,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 import redis
 import json
+import pickle
 
 sentry_sdk.init("https://112f0bcd65ad40ad938a287a0d4ff8b9@o335977.ingest.sentry.io/5250334")
 
@@ -72,10 +73,10 @@ def rb_load(key):
         return dict_db.get(key)
 
 
-bot_state = json.dumps(BOT_STATUS)
+bot_state = pickle.dumps(BOT_STATUS)
 rb_save('bot_status', bot_state)
 
-test_state = json.loads(rb_load('bot_status'))
+test_state = pickle.loads(rb_load('bot_status'))
 
 print(test_state)
 
